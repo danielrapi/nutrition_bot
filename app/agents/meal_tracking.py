@@ -31,7 +31,7 @@ class Meal_Tracker:
         # Different prompting based on whether there's an image
         if has_image:
             # Vision prompt with image
-            prompt = HumanMessage(
+            prompt = [HumanMessage(
                         content=[
                             {"type": "text", "text": f"Analyze this meal description: {message}"},
                             {
@@ -39,7 +39,7 @@ class Meal_Tracker:
                                 "image_url": {"url": f"{state.message.media_url[0]}"},
                             },
                         ],
-                    )
+                    )]
 
             # We need to use the vision model for image analysis
             response = self.vision_llm.invoke(prompt)

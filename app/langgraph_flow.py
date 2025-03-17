@@ -53,7 +53,8 @@ class Workflow:
         Returns: 
             Final state after running the workflow
         """
-        print(f"Running graph with initial state: {state_instance}")
+        #clip initial state to 100 characters
+        print(f"Running graph with initial state: {str(state_instance)[:100]}...")
         result = self.compiled_graph.invoke(state_instance)
         #print(f"Graph result type: {type(result)}")
         #print(f"Graph result contents: {result}")
