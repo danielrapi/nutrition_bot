@@ -6,6 +6,7 @@ import app.models as models
 from app.agents.router import Router
 from app.agents.meal_tracking import Meal_Tracker
 from app.agents.synthesizer import Synthesizer
+from app.agents.transcriber import Transcriber
 
 class Workflow:
     """Workflow class for the LangGraph flow"""
@@ -15,32 +16,44 @@ class Workflow:
         self.graph = StateGraph(state_schema=models.State)
         
         # Initialize agents
+        self.transcriber = Transcriber()
         self.router = Router()
         self.meal_tracking_agent = Meal_Tracker()
         self.synthesizer = Synthesizer()
         # Initialize nodes
+        self.graph.add_node("transcriber", self.transcriber)
         self.graph.add_node("router", self.router)
         self.graph.add_node("meal_tracking_agent", self.meal_tracking_agent)
         self.graph.add_node("synthesizer", self.synthesizer)
-        # Add edges
-        self.graph.add_edge(START, "router")
         
-        # Conditional edge based on whether the router set a response
+
+    
+        # Add edges
+        self.graph.add_edge("transcriber", "router")
+
+        #Conditional edge based on whether the message contains audio
+        self.graph.add_conditional_edges(
+            START,
+            # check if audio is present
+            lambda state: len(state.message.media_items) > 0 and state.message.media_items[0]["type"].startswith("audio"),
+            {True: "transcriber", False: "router"}
+        )
+        #Conditional edge based on whether the router set a response
         self.graph.add_conditional_edges(
             "router",
-            lambda state: "meal_tracking_agent" if state.response is None else END,
+            lambda state: state.response is None,
+            {True: "meal_tracking_agent", False: END}
         )
-
         self.graph.add_edge("meal_tracking_agent", "synthesizer")
-        
         self.graph.add_edge("synthesizer", END)
         
         # Compile the graph
         self.compiled_graph = self.graph.compile()
         
     # Display graph
-    def display_graph(self):
-        display(Image(self.graph.draw_mermaid_png()))
+    def save_display_graph(self):
+        #save png of graph
+        self.compiled_graph.get_graph().draw_mermaid_png(output_file_path="graph.png")
 
     # Run graph with a state instance
     def run_graph(self, state_instance):

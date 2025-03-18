@@ -46,7 +46,7 @@ class MediaProcessor:
         """Process audio and return transcription"""
         audio_data = await self._download_media(audio_url)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.ogg') as temp_audio:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_audio:
             temp_audio.write(audio_data)
             temp_audio_path = temp_audio.name
 

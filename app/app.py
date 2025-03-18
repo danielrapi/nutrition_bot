@@ -15,6 +15,7 @@ app = FastAPI()
 twilio_client = Twilio_Client()
 # Initialize workflow (only once, outside the request handler)
 workflow = Workflow()
+workflow.save_display_graph()
 
 @app.post("/webhook")
 async def webhook_handler(request: Request):

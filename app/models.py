@@ -11,8 +11,7 @@ class WhatsAppMessage(BaseModel):
     body: str = Field(default="")
     sender: str
     num_media: int = 0
-    media_type: Optional[str] = None
-    media_url: Optional[List[str]] = None  # Add field for media URL
+    media_items: Optional[List[Dict[str, Any]]] = None  # Store media info
     form_data: Dict[str, Any]
     
     @classmethod
@@ -27,28 +26,24 @@ class WhatsAppMessage(BaseModel):
             WhatsAppMessage: Validated message object
         """
         # Extract media URL if present
-        media_url = []
+        media_items = []
         for i in range(int(form_data.get('NumMedia', 0))):
             media_type = form_data.get(f'MediaContentType{i}', '')
             tmp_media_url = form_data.get(f'MediaUrl{i}', None)
-            media_url.append(twilio_client.get_media_url(media_type, tmp_media_url))
+            media_items.append(twilio_client.get_media_url(media_type, tmp_media_url))
             
         return cls(
             body=form_data.get('Body', '').strip(),
             sender=form_data.get('From', ''),
             num_media=int(form_data.get('NumMedia', 0)),
-            media_type=form_data.get('MediaContentType0', ''),
-            media_url=media_url,
+            media_items=media_items,
             form_data=form_data
         )
-        
-    async def _download_media(self, image_url: str) -> bytes:
-        """Download media content with authentication"""
-        response = requests.get(
-            image_url,
-            auth=self.twilio_auth
-        )
-        return response.content
+
+class BinaryResponse(BaseModel):
+    """Model representing a binary response from the agent"""
+    bin_outcome: bool
+    reasoning: str
 
 class MealEntry(BaseModel):
     """Model representing a meal entry in the database"""

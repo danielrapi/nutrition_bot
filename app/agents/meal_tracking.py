@@ -12,8 +12,7 @@ class Meal_Tracker:
     
     def __init__(self):
         # Use different models based on whether we're analyzing text or images
-        self.text_llm = ChatOpenAI(model="gpt-4o-mini").with_structured_output(MealEntry)
-        self.vision_llm = ChatOpenAI(model="gpt-4o").with_structured_output(MealEntry)
+        self.llm = ChatOpenAI(model="gpt-4o-mini").with_structured_output(MealEntry)
         self.db = Database()
     
     def __call__(self, state: State) -> State:
@@ -24,40 +23,31 @@ class Meal_Tracker:
             # If response is already set by router, just return
             return state
             
-        message = state.message.body
+        message = state.message.body  # Already contains transcription
         user_id = state.message.sender
-        has_image = state.message.num_media > 0 and state.message.media_url
-        
-        # Different prompting based on whether there's an image
-        if has_image:
-            # Vision prompt with image
-            prompt = [HumanMessage(
-                        content=[
-                            {"type": "text", "text": f"Analyze this meal description: {message}"},
-                            {
-                                "type": "image_url",
-                                "image_url": {"url": f"{state.message.media_url[0]}"},
-                            },
-                        ],
-                    )]
 
-            # We need to use the vision model for image analysis
-            response = self.vision_llm.invoke(prompt)
-        else:
-            # Text-only prompt
-            prompt = f"""
-            Analyze this meal description: "{message}"
-            """
-            response = self.text_llm.invoke(prompt)
-        
-        print(f"Extracted meal data: {response}")
+        prompt = [HumanMessage(
+            content=[
+                {"type": "text", "text": f"Analyze this meal description: {message}"},
+            ],
+        )]
+
+        # Only handle images now, since audio has been transcribed
+        for media in state.message.media_items:
+            if media["type"].startswith("image/"):
+                prompt[0].content.append({
+                    "type": "image_url", 
+                    "image_url": {"url": media["url"]}
+                })
+
+        # Call the model with the simplified prompt
+        response = self.llm.invoke(prompt)
         state.meal_entry = response
         
-        # Explicit function call to save the meal entry
+        # Save to database, etc...
         try:
             user_id = state.message.sender
             self.db.set_meal_entry(user_id, state.meal_entry)
-            # You could add a confirmation to the state
             state.db_operation_status = "success"
         except Exception as e:
             print(f"Database error: {e}")

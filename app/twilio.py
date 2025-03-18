@@ -6,7 +6,8 @@ from requests.auth import HTTPBasicAuth
 import requests
 import json
 from base64 import b64encode
-
+import tempfile
+from typing import Dict, Any
 class Twilio_Client:
     def __init__(self):
         # Load environment variables
@@ -43,13 +44,35 @@ class Twilio_Client:
             print(f"Error sending message: {e}")
             return None
 
-    def get_media_url(self, media_type, media_url: str) -> bytes:
-        """Download media content with authentication"""
+    def get_media_url(self, media_type, media_url: str) -> Dict[str, Any]:
+        """Download media content and process based on type"""
+        
         response = requests.get(
             media_url,
             auth=self.twilio_auth
         )
-        image_data = response.content
-        tmp = b64encode(image_data).decode('utf-8')
-        url = f"data:{media_type};base64,{tmp}"
-        return url
+        
+        if media_type.startswith('image/'):
+            # For images, return as data URL
+            image_data = response.content
+            tmp = b64encode(image_data).decode('utf-8')
+            url = f"data:{media_type};base64,{tmp}"
+            return {"type": media_type, "url": url}
+        
+        elif media_type.startswith('audio/'):
+            # For audio, save to temp file AND encode as base64
+            # First save the audio to a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_audio:
+                temp_audio.write(response.content)
+                temp_audio_path = temp_audio.name
+            
+            # Also encode the audio as base64 for direct API use
+            base64_audio = b64encode(response.content).decode('utf-8')
+            
+            return {
+                "type": media_type, 
+                "file_path": temp_audio_path,  # Path to the saved file
+                "base64_data": base64_audio    # Base64 encoded data
+            }
+        else:
+            raise ValueError(f"Unsupported media type: {media_type}")
