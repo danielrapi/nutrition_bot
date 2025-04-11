@@ -49,9 +49,9 @@ class Synthesizer:
         Keep your total response under 1500 characters for WhatsApp.
         Use friendly, encouraging language with emojis. If the meal is unhealthy, be a bit witty/sarcastic.
 
+        For the witty comment, reference the context of the user in the response: {str(state.context)}.     
         Do not include any other text or formatting.
         """
-        
         response = self.llm.invoke(prompt).content
 
         state.response = response

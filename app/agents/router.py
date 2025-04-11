@@ -7,7 +7,7 @@ class Router:
     """Router node for the LangGraph flow"""
     
     def __init__(self):
-        self.llm = ChatOpenAI(model="gpt-4o-mini").with_structured_output(BinaryResponse)
+        self.llm = ChatOpenAI(model="gpt-4o-mini")
     
     def __call__(self, state: State) -> State:
         """
@@ -20,14 +20,19 @@ class Router:
             content=[
                 {"type": "text", "text": 
                     f"""Analyze this message: "{message}"
+                    Choose between the following intents:
+                    - meal_tracking:
+                        Is the user describing food, a meal, or asking about nutrition? Look for mentions of:
+                        - Food items (e.g. chicken, rice, vegetables)
+                        - Meals (e.g. breakfast, lunch, dinner)
+                        - Portions or servings
+                        - Nutrition terms (e.g. calories, protein)
+                    - summary:
+                        Is the user asking for a summary of their meal tracking data?
+                    - other:
+                        Is the user asking about something else entirely that is unrelated to food or meal tracking or nutrition?
                     
-                    Is the user describing food, a meal, or asking about nutrition? Look for mentions of:
-                    - Food items (e.g. chicken, rice, vegetables)
-                    - Meals (e.g. breakfast, lunch, dinner)
-                    - Portions or servings
-                    - Nutrition terms (e.g. calories, protein)
-                    
-                    True if the message contains ANY food/meal/nutrition content, or False if it's completely unrelated to food.
+                    Please return the intent as a string and nothing else. Possible values are: meal_tracking, summary, other.
                     """.strip().lower()}
             ],
         )] 
@@ -45,16 +50,13 @@ class Router:
                 })
         
         print(f"Router prompt: {str(prompt)[:150]}...")
-        response = self.llm.invoke(prompt)
-        print(f"Router decision: {response.bin_outcome}")
-        print(f"Router reasoning: {response.reasoning}")
-        
+        response = self.llm.invoke(prompt).content.strip().lower()
+        print(f"Router decision: {response}")
+        #print(f"Router reasoning: {response.reasoning}")
+        state.intent = response
         # If message is about meal tracking, set response to indicate routing
-        if response.bin_outcome:
-            # Just pass through to meal tracking - no response needed here
-            print("Routing to meal tracking")
-            pass
-        else:
+        
+        if response == "other":
             # For now, handle here with a simple response
             print("Routing to default response")
             state.response = "I'm not sure how to help with that. Can you tell me about a meal you'd like me to analyze or send a photo of your food?"

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from datetime import datetime
 from app.twilio import Twilio_Client
 
@@ -47,24 +47,50 @@ class BinaryResponse(BaseModel):
 
 class MealEntry(BaseModel):
     """Model representing a meal entry in the database"""
-    #create uuid by default
-    #id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    #user_id: int
+    id: Optional[str] = None  # Add ID field
     meal_name: str
     meal_description: str
-    #meal_date: datetime = Field(default_factory=datetime.now)
     meal_calories: int
     meal_protein: int
     meal_carbs: int
     meal_fat: int
 
-# State Class
+# Add these new models
+class MealContext(BaseModel):
+    """Model representing a single meal in the context"""
+    id: str
+    created_at: datetime
+    meal_name: str
+    meal_description: str
+    meal_calories: int
+    meal_protein: int
+    meal_carbs: int
+    meal_fat: int
+
+class DailyContext(BaseModel):
+    """Model representing the daily context of meals and totals"""
+    total_calories: int = 0
+    total_protein: int = 0
+    total_carbs: int = 0
+    total_fat: int = 0
+    meals: List[MealContext] = []
+
+    def calculate_totals(self):
+        """Calculate totals from meals"""
+        self.total_calories = sum(meal.meal_calories for meal in self.meals)
+        self.total_protein = sum(meal.meal_protein for meal in self.meals)
+        self.total_carbs = sum(meal.meal_carbs for meal in self.meals)
+        self.total_fat = sum(meal.meal_fat for meal in self.meals)
+
+# Modify the State class to include context
 class State(BaseModel):
     """State class for the LangGraph flow"""
     message: WhatsAppMessage
     meal_entry: Optional[MealEntry] = None
     response: Optional[str] = None
     db_operation_status: Optional[str] = None
+    intent: Optional[str] = None
+    context: Optional[DailyContext] = None
     
     #class Config:
    #     frozen = True  # Make the model immutable and hashable
